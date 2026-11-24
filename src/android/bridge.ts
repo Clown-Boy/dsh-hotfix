@@ -1,3 +1,6 @@
+import { closeSearchPanel, useSearchPanel } from '../components/search/searchPanelState.js'
+import { closeMobileSider, useMobileSider } from '../components/sider/mobileSiderState.js'
+
 export interface AndroidStatus {
   apkVersionName: string
   apkVersionCode: number
@@ -162,9 +165,17 @@ export const setupAndroidWebHooks = () => {
   }
 
   window.__onAndroidBackPress = () => {
-    const dialogs = document.querySelectorAll('[role="dialog"]')
-    if (dialogs.length > 0) {
+    const overlays = document.querySelectorAll('[role="listbox"], [role="menu"], [role="dialog"]')
+    if (overlays.length > 0) {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      return true
+    }
+    if (useSearchPanel.getState().entry !== null) {
+      closeSearchPanel()
+      return true
+    }
+    if (useMobileSider.getState().open) {
+      closeMobileSider()
       return true
     }
     return false
