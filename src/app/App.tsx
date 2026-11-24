@@ -23,7 +23,11 @@ import { Button } from '../components/base/Button.js'
 import { stopReadAloud } from '../services/speech/readAloud.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider } from '../components/sider/mobileSiderState.js'
-import { MobileSider, Sider } from '../components/sider/Sider.js'
+import { Sider } from '../components/sider/Sider.js'
+import {
+  AnimatedMobileSider,
+  useMobileDrawerSwipe,
+} from '../features/gestures/MobileDrawerSwipe.js'
 import styles from './App.module.css'
 
 export const App = () => {
@@ -51,6 +55,7 @@ export const App = () => {
   const activeId = useChatStore((state) => state.activeId)
 
   usePreventPageScroll(isMobile)
+  useMobileDrawerSwipe(isMobile)
 
   useEffect(() => {
     document.documentElement.lang = locale
@@ -76,7 +81,7 @@ export const App = () => {
   return (
     <>
       <div ref={frameRef} className={styles.frame}>
-        {isMobile ? <MobileSider /> : siderCollapsed ? null : <Sider />}
+        {isMobile ? <AnimatedMobileSider /> : siderCollapsed ? null : <Sider />}
         <main className={styles.main}>
           {saveError ? (
             <div className={styles.saveError} role="alert">

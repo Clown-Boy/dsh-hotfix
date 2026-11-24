@@ -10,6 +10,7 @@
     "build": "rm -rf dist && NODE_ENV=production rspack build -c rspack.config.ts",
     "build:android": "node scripts/build-android-web.mjs",
     "prepare:release": "node scripts/prepare-release.mjs",
+    "ship": "node scripts/interactive-publish.mjs",
     "sync:hotfix": "node scripts/sync-upstream.mjs --mode hotfix",
     "sync:full": "node scripts/sync-upstream.mjs --mode full --force",
     "test:manifest": "node --test scripts/manifest-lib.test.mjs",

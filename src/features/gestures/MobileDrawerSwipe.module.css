@@ -1,0 +1,31 @@
+.mask {
+  position: absolute;
+  inset: 0;
+  z-index: 799;
+  background-color: rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  transition: opacity 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.maskVisible {
+  opacity: 1;
+}
+
+.maskClosing {
+  pointer-events: none;
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 800;
+  transform: translateX(-100%);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.drawerVisible {
+  transform: translateX(0);
+}
