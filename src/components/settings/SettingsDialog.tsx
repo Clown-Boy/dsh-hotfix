@@ -34,6 +34,7 @@ import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
+import { AndroidUpdateSection } from '../../android/AndroidUpdateSection.js'
 import styles from './Settings.module.css'
 
 /**
@@ -100,6 +101,7 @@ const SettingsContent = () => {
               <LocaleSetting />
               <TtsVoiceSetting />
               <LocationSetting />
+              <AndroidUpdateSection />
             </>
           ) : (
             <>

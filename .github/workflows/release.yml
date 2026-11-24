@@ -1,0 +1,130 @@
+name: Android Release & Hot Update
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: '发布类型：full（前端热更新 + APK 整包）/ hotfix（仅前端单文件热更新）'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - hotfix
+      version_tag:
+        description: '自定义版本号/Tag（例如 v0.1.4 或 hotfix-20261124）'
+        required: true
+      apk_version_code:
+        description: 'APK versionCode（仅 full 发布时使用）'
+        required: false
+        default: '1'
+      min_apk_version_code:
+        description: '最低兼容 APK versionCode'
+        required: false
+        default: '1'
+      release_notes:
+        description: '更新说明'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.6.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Determine release parameters
+        id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF_NAME}"
+            TYPE="full"
+          else
+            TAG="${{ github.event.inputs.version_tag }}"
+            TYPE="${{ github.event.inputs.release_type }}"
+          fi
+          VERSION_CLEAN="${TAG#v}"
+          APK_CODE="${{ github.event.inputs.apk_version_code || '1' }}"
+          MIN_APK_CODE="${{ github.event.inputs.min_apk_version_code || '1' }}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "type=${TYPE}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION_CLEAN}" >> "$GITHUB_OUTPUT"
+          echo "apk_code=${APK_CODE}" >> "$GITHUB_OUTPUT"
+          echo "min_apk_code=${MIN_APK_CODE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Android Web Bundle
+        env:
+          WEB_VERSION: ${{ steps.meta.outputs.version }}
+          MIN_APK_VERSION_CODE: ${{ steps.meta.outputs.min_apk_code }}
+          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+        run: pnpm build:android
+
+      - name: Setup Java 17 (for Android APK)
+        if: steps.meta.outputs.type == 'full'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        if: steps.meta.outputs.type == 'full'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Release APK
+        if: steps.meta.outputs.type == 'full'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            -PDEEPSEEK_GITHUB_REPO="${{ github.repository }}" \
+            -PDEEPSEEK_APP_VERSION_CODE="${{ steps.meta.outputs.apk_code }}" \
+            -PDEEPSEEK_APP_VERSION_NAME="${{ steps.meta.outputs.version }}"
+
+      - name: Prepare flat release assets & manifest
+        shell: bash
+        run: |
+          APK_ARG=""
+          if [ "${{ steps.meta.outputs.type }}" = "full" ]; then
+            APK_FILE=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+            APK_ARG="--apk ${APK_FILE} --apk-asset-name DeepSeek-Chat-${{ steps.meta.outputs.tag }}.apk --apk-version-code ${{ steps.meta.outputs.apk_code }} --apk-version-name ${{ steps.meta.outputs.version }}"
+          fi
+          node scripts/prepare-release.mjs \
+            --web-version "${{ steps.meta.outputs.version }}" \
+            --min-apk-version-code "${{ steps.meta.outputs.min_apk_code }}" \
+            --notes "${{ github.event.inputs.release_notes }}" \
+            $APK_ARG
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          body: ${{ github.event.inputs.release_notes }}
+          files: release-assets/*
