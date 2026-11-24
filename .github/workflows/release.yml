@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'hotfix-*'
   workflow_dispatch:
     inputs:
       release_type:
@@ -58,27 +59,37 @@ jobs:
         id: meta
         shell: bash
         run: |
+          PROP_APK_CODE=$(grep -E '^DEEPSEEK_APP_VERSION_CODE=' android/gradle.properties | cut -d'=' -f2 | tr -d '\r')
+          PROP_APK_CODE="${PROP_APK_CODE:-1}"
           if [ "${{ github.event_name }}" = "push" ]; then
             TAG="${GITHUB_REF_NAME}"
-            TYPE="full"
+            if [[ "${TAG}" == hotfix-* ]]; then
+              TYPE="hotfix"
+            else
+              TYPE="full"
+            fi
+            NOTES=$(git log -1 --pretty=%s)
           else
             TAG="${{ github.event.inputs.version_tag }}"
             TYPE="${{ github.event.inputs.release_type }}"
+            NOTES="${{ github.event.inputs.release_notes }}"
           fi
           VERSION_CLEAN="${TAG#v}"
-          APK_CODE="${{ github.event.inputs.apk_version_code || '1' }}"
+          APK_CODE="${{ github.event.inputs.apk_version_code }}"
+          APK_CODE="${APK_CODE:-$PROP_APK_CODE}"
           MIN_APK_CODE="${{ github.event.inputs.min_apk_version_code || '1' }}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "type=${TYPE}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION_CLEAN}" >> "$GITHUB_OUTPUT"
           echo "apk_code=${APK_CODE}" >> "$GITHUB_OUTPUT"
           echo "min_apk_code=${MIN_APK_CODE}" >> "$GITHUB_OUTPUT"
+          echo "notes=${NOTES}" >> "$GITHUB_OUTPUT"
 
       - name: Build Android Web Bundle
         env:
           WEB_VERSION: ${{ steps.meta.outputs.version }}
           MIN_APK_VERSION_CODE: ${{ steps.meta.outputs.min_apk_code }}
-          RELEASE_NOTES: ${{ github.event.inputs.release_notes }}
+          RELEASE_NOTES: ${{ steps.meta.outputs.notes }}
         run: pnpm build:android
 
       - name: Setup Java 17 (for Android APK)
@@ -118,7 +129,7 @@ jobs:
           node scripts/prepare-release.mjs \
             --web-version "${{ steps.meta.outputs.version }}" \
             --min-apk-version-code "${{ steps.meta.outputs.min_apk_code }}" \
-            --notes "${{ github.event.inputs.release_notes }}" \
+            --notes "${{ steps.meta.outputs.notes }}" \
             $APK_ARG
 
       - name: Publish GitHub Release
@@ -126,5 +137,5 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: ${{ steps.meta.outputs.tag }}
-          body: ${{ github.event.inputs.release_notes }}
+          body: ${{ steps.meta.outputs.notes }}
           files: release-assets/*

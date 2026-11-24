@@ -10,6 +10,8 @@
     "build": "rm -rf dist && NODE_ENV=production rspack build -c rspack.config.ts",
     "build:android": "node scripts/build-android-web.mjs",
     "prepare:release": "node scripts/prepare-release.mjs",
+    "sync:hotfix": "node scripts/sync-upstream.mjs --mode hotfix",
+    "sync:full": "node scripts/sync-upstream.mjs --mode full --force",
     "test:manifest": "node --test scripts/manifest-lib.test.mjs",
     "type": "tsc -p tsconfig.json",
     "lint": "oxlint src rspack.config.ts rspack.android.config.ts",
