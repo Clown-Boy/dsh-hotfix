@@ -35,6 +35,7 @@ import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import { AndroidUpdateSection } from '../../android/AndroidUpdateSection.js'
+import { SettingsBalanceCell } from '../../features/balance/BalanceWidgets.js'
 import styles from './Settings.module.css'
 
 /**
@@ -106,6 +107,7 @@ const SettingsContent = () => {
           ) : (
             <>
               <ApiKeyField editor={apiKeyEditor} />
+              <SettingsBalanceCell />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
               <ExportHistory disabled={historyBusy} />
               <SettingCell
